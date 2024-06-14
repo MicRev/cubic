@@ -25,7 +25,7 @@ class Cubic {
 
         Cubic();
 
-        Cubic(unsigned int theta, unsigned int phi);
+        Cubic(unsigned int theta, unsigned int phi, unsigned int psi);
         
         /**
          * Find which surface the point x, y, z is on.
