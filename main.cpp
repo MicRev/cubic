@@ -9,6 +9,9 @@ bool printed = false;
 #endif
 
 const char lightness[6] = {'.', '-', ':', '=', '#', '@'};
+const char shadow = '\\';
+const double ground_z = -sqrt(3.) / 2;
+const double length = 1.;
 
 const int D = 100;
 const double CERTAINTY = 1e-6;
@@ -39,6 +42,37 @@ void Cubic::get_light_order() {
     }
 }
 
+Eigen::Vector3d Cubic::point_through_vec_to_surface(Eigen::Vector3d point, Eigen::Vector3d direction) {
+    Eigen::Vector3d unrot_vec       = inv_rot_mat * point;
+    Eigen::Vector3d unrot_view_norm = inv_rot_mat * direction;
+
+    for (int i = 0; i < 6; ++i) {  // find meeting point of eyeshot through this point with 6 surfaces
+
+        int idx = i % 3;  // x, y, or z
+        double val = double(i / 3) - 0.5; // -0.5 for 0, 1, 2 and 0.5 for 3, 4, 5
+
+        if (val * unrot_view_norm(idx) > 0) continue;  // make sure the point is on the surface can be seen
+
+        Eigen::Vector3d p;
+        p(idx) = val;
+        bool is_valid_point = true;
+        
+        for (int j = 0; j < 3; ++j) {
+            if (j == idx) continue;
+            p(j) = unrot_vec(j) + (val - unrot_vec(idx)) * unrot_view_norm(j) / unrot_view_norm(idx);
+            if (p(j) < -0.5 || p(j) > 0.5) {
+                is_valid_point = false; // not the point
+            }
+        }
+
+        if (!is_valid_point) continue;
+
+        return p;
+        break;
+    }
+    Eigen::Vector3d p(0, 0, 0);
+    return p;
+}
 
 Cubic::Cubic() {
     rot_mat     << 1., 0., 0., 0., 1., 0., 0., 0., 1.;
@@ -75,13 +109,7 @@ Cubic::Cubic(unsigned int theta, unsigned int phi, unsigned int psi) : Cubic() {
     get_light_order();
     _view_norm_vec << -0.8660254037844*0.5, -0.8660254037844*-0.8660254037844, -0.5;
 }
-        
-        /**
-         * Find which surface the point x, y, z is on.
-         * The return value would be the indexes of the four cornor of the surface.
-         * @param[in] x, y, z The coordinate of the point
-         * @return index of the surface, ordering x=0, y=0, z=0, x=1, y=1, z=1
-        */
+
 int Cubic::which_surface(Eigen::Vector3d vec) {
     Eigen::Vector3d unrot_vec = vec;
     if (is_close(unrot_vec(0), -0.5)) return 0;
@@ -103,8 +131,6 @@ char Cubic::light_of(Eigen::Vector2d coord) {
     #endif
 
     Eigen::Vector3d vec;
-
-    Eigen::Vector3d rot_view_norm_vec =  _view_norm_vec; 
 
     #ifdef DEBUG
         if (!printed) {
@@ -137,34 +163,7 @@ char Cubic::light_of(Eigen::Vector2d coord) {
         log_file << "Vec in origin rotated space\n" << vec << std::endl; 
     #endif
 
-    Eigen::Vector3d unrot_vec       = inv_rot_mat * vec;
-    Eigen::Vector3d unrot_view_norm = inv_rot_mat * _view_norm_vec;
-
-    Eigen::Vector3d point_on_surface(0, 0, 0);
-    for (int i = 0; i < 6; ++i) {  // find meeting point of eyeshot through this point with 6 surfaces
-
-        int idx = i % 3;  // x, y, or z
-        double val = double(i / 3) - 0.5; // -0.5 for 0, 1, 2 and 0.5 for 3, 4, 5
-
-        if (val * unrot_view_norm(idx) > 0) continue;  // make sure the point is on the surface can be seen
-
-        Eigen::Vector3d p;
-        p(idx) = val;
-        bool is_valid_point = true;
-        
-        for (int j = 0; j < 3; ++j) {
-            if (j == idx) continue;
-            p(j) = unrot_vec(j) + (val - unrot_vec(idx)) * unrot_view_norm(j) / unrot_view_norm(idx);
-            if (p(j) < -0.5 || p(j) > 0.5) {
-                is_valid_point = false; // not the point
-            }
-        }
-
-        if (!is_valid_point) continue;
-
-        point_on_surface = p;
-        break;
-    }
+    Eigen::Vector3d point_on_surface = point_through_vec_to_surface(vec, _view_norm_vec);
 
     if (point_on_surface(0) == 0 && point_on_surface(1) == 0 && point_on_surface(2) == 0) {
         return ' ';
@@ -179,6 +178,33 @@ char Cubic::light_of(Eigen::Vector2d coord) {
     #endif
     get_light_order();
     return lightness[light_on_surface[surface]];
+}
+
+char Cubic::shadow_of(Eigen::Vector2d coord) {
+    Eigen::Vector3d vec;
+    double nx = _view_norm_vec(0);
+    double ny = _view_norm_vec(1);
+    double nz = _view_norm_vec(2);
+
+    Eigen::Matrix<double, 3, 2> base_mat;
+    double norm_coord_x = sqrt(ny*ny + nx*nx);
+    double norm_coord_y = norm_coord_x;
+    base_mat <<  ny / norm_coord_x, -nx*nz        / norm_coord_y, 
+                -nx / norm_coord_x, -ny*nz        / norm_coord_y, 
+                 0.               , (nx*nx+ny*ny) / norm_coord_y;
+    
+    vec = base_mat * coord + -D * _view_norm_vec;
+
+    Eigen::Vector3d ground_point(0, 0, ground_z);
+    ground_point(0) = nx / nz * (ground_z - vec(2)) + vec(0);
+    ground_point(1) = ny / nz * (ground_z - vec(2)) + vec(1);
+
+    Eigen::Vector3d point_on_surface = point_through_vec_to_surface(ground_point, -light);
+    if (point_on_surface(0) == 0 && point_on_surface(1) == 0 && point_on_surface(2) == 0) {
+        return ' ';
+    } else {
+        return shadow;
+    }
 }
 
 void Cubic::rotate_horizonal(int theta) {
@@ -280,22 +306,9 @@ int main() {
     LINES = w.ws_row;
     COLS  = w.ws_col;
 
-    int i_begin, i_end, j_begin, j_end;
-    int size;
-
-    if (LINES > COLS/2) {
-        size = COLS/2;
-        i_begin = 0;
-        i_end = COLS;
-        j_begin = LINES/2 - size/2;
-        j_end = LINES/2 + size/2;
-    } else {
-        size = LINES;
-        i_begin = COLS/2 - size;
-        i_end = COLS/2 + size;
-        j_begin = 0;
-        j_end = LINES;
-    }
+    #define min(a, b) ((a) < (b) ? (a) : (b))
+    int size = min(LINES, COLS/2);
+    #undef min
 
     #ifdef DEBUG
     log_file << "Lines\tCols\tsize\ti begin\ti end\tj begin\tj end\n" 
@@ -310,15 +323,19 @@ int main() {
             printed = false;
         #endif
 
-        for (int i = i_begin; i < i_end; ++i) {
-            for (int j = j_begin; j < j_end; ++j) {
+        for (int i = 0; i < COLS; ++i) {
+            for (int j = 0; j < LINES; ++j) {
                 double x = (i - COLS/2) * 2. / 2.5 / size + 1e-6;
                 double y = (LINES/2 - j) * 2. / size + 1e-6;  // 1e-6 for numerical stability
                 #ifdef DEBUG
                     // log_file << "i " << i << " j " << j << " x " << x << " y " << y << std::endl;
                 #endif
                 Eigen::Vector2d coord(x, y);
-                mvaddch(j, i, cubic.light_of(coord));
+                char cur_char;
+                cur_char = cubic.shadow_of(coord);
+                if (cur_char != ' ') mvaddch(j, i, cur_char);
+                cur_char = cubic.light_of(coord);
+                if (cur_char != ' ') mvaddch(j, i, cur_char);
             }
         }
         refresh();

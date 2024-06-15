@@ -21,12 +21,6 @@ class Cubic {
 
         void get_light_order();
 
-    public:
-
-        Cubic();
-
-        Cubic(unsigned int theta, unsigned int phi, unsigned int psi);
-        
         /**
          * Find which surface the point x, y, z is on.
          * The return value would be the indexes of the four cornor of the surface.
@@ -35,7 +29,23 @@ class Cubic {
         */
         int which_surface(Eigen::Vector3d vec);
 
+        /**
+         * Find a point on surface first met tracing from certain point through certain direction
+         * @param[in] point the point to begin tracing
+         * @param[in] direction the direction the tracing obey
+         * @return the point on surface. It is ensured that the returned point is the first point met on surface. When no point found, the function return (0, 0, 0)
+        */
+        Eigen::Vector3d point_through_vec_to_surface(Eigen::Vector3d point, Eigen::Vector3d direction);
+
+    public:
+
+        Cubic();
+
+        Cubic(unsigned int theta, unsigned int phi, unsigned int psi);
+
         char light_of(Eigen::Vector2d coord);
+
+        char shadow_of(Eigen::Vector2d coord);
 
         void rotate_horizonal(int theta);
 
