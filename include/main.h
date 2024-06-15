@@ -41,4 +41,10 @@ class Cubic {
 
         void rotate_vertical(int theta);
 
+        void rotate_view_vertical(int theta);
+
+        void rotate_view_horizonal(int theta);
+
+        void reset();
+
 };

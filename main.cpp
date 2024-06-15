@@ -44,7 +44,7 @@ Cubic::Cubic() {
     rot_mat     << 1., 0., 0., 0., 1., 0., 0., 0., 1.;
     inv_rot_mat << 1., 0., 0., 0., 1., 0., 0., 0., 1.;
     get_light_order();
-    _view_norm_vec << 1e-6, -1, 1e-7;
+    _view_norm_vec << -0.8660254037844*0.5, -0.8660254037844*-0.8660254037844, -0.5;
 }
 
 Cubic::Cubic(unsigned int theta, unsigned int phi, unsigned int psi) : Cubic() {
@@ -73,7 +73,7 @@ Cubic::Cubic(unsigned int theta, unsigned int phi, unsigned int psi) : Cubic() {
     rot_mat = phi_rot_mat * theta_rot_mat;
     inv_rot_mat = rot_mat.inverse();
     get_light_order();
-    _view_norm_vec << 1e-6, -1, 1e-7;
+    _view_norm_vec << -0.8660254037844*0.5, -0.8660254037844*-0.8660254037844, -0.5;
 }
         
         /**
@@ -199,7 +199,7 @@ void Cubic::rotate_horizonal(int theta) {
                                   nx/norm_coord_view,  ny/norm_coord_view, 0,
                                   0                 ,  0                 , 1;  // unitary
 
-    rot_mat = base_transform_to_view_mat * cur_rot_mat * base_transform_to_view_mat.transpose() * rot_mat;
+    rot_mat = base_transform_to_view_mat.transpose() * cur_rot_mat * base_transform_to_view_mat * rot_mat;
     inv_rot_mat = rot_mat.inverse();
 }
 
@@ -220,8 +220,44 @@ void Cubic::rotate_vertical(int theta) {
                    0, cos(d_theta), -sin(d_theta),
                    0, sin(d_theta),  cos(d_theta);
 
-    rot_mat = base_transform_to_view_mat * cur_rot_mat * base_transform_to_view_mat.transpose() * rot_mat;
+    rot_mat = base_transform_to_view_mat.transpose() * cur_rot_mat * base_transform_to_view_mat * rot_mat;
     inv_rot_mat = rot_mat.inverse();
+}
+
+void Cubic::rotate_view_horizonal(int theta) {
+    double d_theta = theta / 180. * M_PI;
+    Eigen::Matrix3d cur_rot_mat;
+    cur_rot_mat <<  cos(d_theta), sin(d_theta), 0,
+                    -sin(d_theta), cos(d_theta), 0,
+                    0             , 0              , 1;
+    _view_norm_vec = cur_rot_mat.transpose() * _view_norm_vec;
+}
+
+void Cubic::rotate_view_vertical(int theta) { // !BUG here
+    double d_theta = theta / 180. * M_PI;
+    Eigen::Matrix3d cur_rot_mat;
+    cur_rot_mat << 1, 0             ,  0              ,
+                   0, cos(d_theta), -sin(d_theta),
+                   0, sin(d_theta),  cos(d_theta);
+    
+    double nx = _view_norm_vec(0);
+    double ny = _view_norm_vec(1);
+    double nz = _view_norm_vec(2);
+    double norm_coord_view = sqrt(nx*nx+ny*ny);
+
+    Eigen::Matrix3d base_transform_to_view_mat;
+    base_transform_to_view_mat << ny/norm_coord_view, -nx/norm_coord_view, 0,
+                                  nx/norm_coord_view,  ny/norm_coord_view, 0,
+                                  0                 ,  0                 , 1;  // unitary
+
+    _view_norm_vec = base_transform_to_view_mat * cur_rot_mat.transpose() * base_transform_to_view_mat.transpose() * _view_norm_vec;
+
+}
+
+void Cubic::reset() {
+    rot_mat << 1., 0., 0., 0., 1., 0., 0., 0., 1.;
+    inv_rot_mat = rot_mat;
+    _view_norm_vec << -0.8660254037844*0.5, -0.8660254037844*-0.8660254037844, -0.5;
 }
 
 int main() {
@@ -308,6 +344,26 @@ int main() {
                 break;
             case 'd':
                 cubic.rotate_horizonal(-10);
+                clear();
+                break;
+            // case 'i':
+            //     cubic.rotate_view_vertical(-10);
+            //     clear();
+            //     break;
+            // case 'k':
+            //     cubic.rotate_view_vertical( 10);
+            //     clear();
+            //     break;
+            case 'j':
+                cubic.rotate_view_horizonal( -10);
+                clear();
+                break;
+            case 'l':
+                cubic.rotate_view_horizonal(10);
+                clear();
+                break;
+            case 'r':
+                cubic.reset();
                 clear();
                 break;
             case 'q':
