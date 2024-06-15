@@ -267,7 +267,7 @@ int main() {
              << i_begin << "\t" << i_end << "\t" << j_begin << "\t" << j_end << std::endl;
     #endif
 
-    Cubic cubic(0, 55, 0);
+    Cubic cubic(0, 0, 0);
     while (1) {
 
         #ifdef DEBUG
@@ -276,7 +276,7 @@ int main() {
 
         for (int i = i_begin; i < i_end; ++i) {
             for (int j = j_begin; j < j_end; ++j) {
-                double x = (i - COLS/2) * 2. / 2 / size + 1e-6;
+                double x = (i - COLS/2) * 2. / 2.5 / size + 1e-6;
                 double y = (LINES/2 - j) * 2. / size + 1e-6;  // 1e-6 for numerical stability
                 #ifdef DEBUG
                     // log_file << "i " << i << " j " << j << " x " << x << " y " << y << std::endl;
@@ -295,19 +295,19 @@ int main() {
         bool to_break = false;
         switch (k) {
             case 'w':
-                cubic.rotate_vertical(-11);
+                cubic.rotate_vertical(-10);
                 clear();
                 break;
             case 's':
-                cubic.rotate_vertical( 11);
+                cubic.rotate_vertical( 10);
                 clear();
                 break;
             case 'a':
-                cubic.rotate_horizonal( 11);
+                cubic.rotate_horizonal( 10);
                 clear();
                 break;
             case 'd':
-                cubic.rotate_horizonal(-11);
+                cubic.rotate_horizonal(-10);
                 clear();
                 break;
             case 'q':
