@@ -8,8 +8,8 @@ std::fstream log_file;
 bool printed = false;
 #endif
 
-const char lightness[6] = {'.', '-', ':', '=', '#', '@'};
-const char shadow = '\\';
+const char lightness[6] = {'-', '=', '>', '*', '#', '@'};
+const char shadow = '.';
 const double ground_z = -sqrt(3.) / 2;
 const double length = 1.;
 
@@ -318,6 +318,8 @@ int main() {
 
     Cubic cubic(0, 0, 0);
     while (1) {
+
+        mvprintw(0, 0, "WASD: Rotate cubic; J L: Look left and right; R: Reset; Q: quit");
 
         #ifdef DEBUG
             printed = false;
